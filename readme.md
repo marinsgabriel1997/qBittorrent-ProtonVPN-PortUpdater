@@ -102,16 +102,16 @@ Before using this tool, ensure you have:
             ```
         - **Task Id** (for `<Id>`):
             ```powershell
-            (Get-ItemProperty -Path $profile.PSPath -Name ProfileName -ErrorAction SilentlyContinue).ProfileName.PSChildName
+            if ($protonVPNGuid = (Get-ChildItem "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\NetworkList\Profiles" | Where-Object { (Get-ItemProperty $_.PSPath).ProfileName -eq "ProtonVPN" } | Select-Object -ExpandProperty PSChildName)) { Write-Host "`nProtonVPN profile found with GUID:`n`n$protonVPNGuid`n" } else { Write-Host "ProtonVPN profile not found in the registry.`n"; Pause; exit 1 }
             ```
 
     - Note each output.
     - Open `task_config.xml` in a text editor.
     - Replace the placeholders with your collected values:
-        - `<Date>` → output of the Date command
-        - `<Author>` → output of the Author command
-        - `<UserId>` → output of the UserId command
-        - `<Id>` → output of the Task Id command
+        - `<Date>` in `<RegistrationInfo>` → output of the **Date** command
+        - `<Author>` in `<RegistrationInfo>`→ output of the **Author** command
+        - `<UserId>` in `<Principals>` → output of the **UserId** command
+        - `<Id>` in `<NetworkSettings>` → output from the **ProtonVPN GUID** command.
     - Save the file.
     - In Task Scheduler, choose **Import Task…**, select your edited `task_config.xml` and finish the import.
 

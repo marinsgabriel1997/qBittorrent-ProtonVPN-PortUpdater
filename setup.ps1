@@ -59,6 +59,7 @@ foreach ($profile in $profiles) {
 
 if (-not $protonVPNGuid) {
     Write-Host "ProtonVPN profile not found in the registry."
+    Pause
     exit 1
 }
 
