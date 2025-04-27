@@ -1,19 +1,21 @@
 if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
-    Write-Host "Este script requer privilegios de administrador."
+  
+    Write-Host "This script requires administrator privileges."
     
     $currentUserSID = ([Security.Principal.WindowsIdentity]::GetCurrent()).User.Value
     $currentUser = ([Security.Principal.WindowsIdentity]::GetCurrent()).Name    
     $updatePortVBSPath = Join-Path $PSScriptRoot "update_port.vbs"
-    
-    $confirmation = Read-Host "Deseja executar como administrador? (Y/N)"
+    $languagesVBSPath = Join-Path $PSScriptRoot "languages.vbs"
+
+
+    $confirmation = Read-Host "Do you want to run as administrator? ([Y]/N - Y Default)"
     
     if ($confirmation -eq '' -or $confirmation -eq 'Y' -or $confirmation -eq 'y') {
         $scriptPath = $MyInvocation.MyCommand.Path
-        Start-Process powershell.exe -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$scriptPath`" `"$currentUserSID`" `"$currentUser`" `"$updatePortVBSPath`"" -Verb RunAs
-        Pause
+        Start-Process powershell.exe -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$scriptPath`" `"$currentUserSID`" `"$currentUser`" `"$updatePortVBSPath`" `"$languagesVBSPath`"" -Verb RunAs
         exit
     } else {
-        Write-Host "Execução cancelada pelo usuário."
+        Write-Host "Script execution canceled."
         exit
     }
 }
@@ -21,6 +23,7 @@ if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdenti
 $sid = $args[0]
 $currentUser = $args[1]
 $updatePortVBSPath = $args[2]
+$languagesVBSPath = $args[3]
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $xmlPath = Join-Path -Path $scriptDir -ChildPath "task_config.xml"
 
@@ -36,22 +39,18 @@ foreach ($profile in $profiles) {
 }
 
 if (-not $protonVPNGuid) {
-    Write-Host "Nenhuma rede ProtonVPN foi encontrada."
+    Write-Host "ProtonVPN profile not found in the registry."
     exit 1
 }
 
-$destinationPath = "C:\Program Files\QbittorrentProtonVPNUpdater\update_port.vbs"
+$destinationPath = "C:\Program Files\QbittorrentProtonVPNUpdater"
 
-if (-not (Test-Path (Split-Path $destinationPath))) {
-    Write-Host "Criando o diretório de destino..."
-    New-Item -Path (Split-Path $destinationPath) -ItemType Directory
+if (-not (Test-Path $destinationPath)) {
+    New-Item -Path $destinationPath -ItemType Directory -Force | Out-Null
 }
 
 Copy-Item -Path $updatePortVBSPath -Destination $destinationPath -Force
-
-Write-Host "Arquivo update_port.vbs copiado para $destinationPath"
-Write-Host "GUID da ProtonVPN encontrado: $protonVPNGuid"
-Write-Host "SID do usuario: $sid"
+Copy-Item -Path $languagesVBSPath -Destination $destinationPath -Force
 
 $currentDateTime = [string](Get-Date -Format "yyyy-MM-ddTHH:mm:ss.fffffff")
 
@@ -68,10 +67,11 @@ if ($sid) {
     $RegistrationInfo.Author = $currentUser
 
     Register-ScheduledTask -TaskName "Qbitorrent-ProtonVPN port Updater" -Xml $xmlContent.OuterXml -Force
-    Write-Host "Tarefa agendada atualizada com sucesso."
+    Write-Host "Scheduled task created successfully."
     Pause
+    exit 0
 } else {
-    Write-Host "Nao foi possivel encontrar NetworkSettings no arquivo XML."
+    Write-Host "Failed to create scheduled task."
     Pause
     exit 1
 }

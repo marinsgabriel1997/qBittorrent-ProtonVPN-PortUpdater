@@ -9,6 +9,7 @@ qbittorrentUrl = "http://localhost:8078"
 logProtonVPN = "C:\Users\Admin\AppData\Local\Proton\Proton VPN\Logs\client-logs.txt"
 envVarName = "LAST_SENT_PORT"
 
+' Use this log for debugging purposes, uncomment the Log function calls and run the script from the command line, e.g. open cmd in the script folder and run: cscript `update_port.vbs`
 Sub Log(message)
     WScript.Echo Now & " - " & message
 End Sub
@@ -35,16 +36,16 @@ Function IsPortOpen(url)
 End Function
 
 Dim i
-Log GetText("START_CHECK")
+' Log GetText("START_CHECK")
 For i = 1 To 20
     If IsPortOpen(qbittorrentUrl) Then
-        Log GetText("CONNECTION_SUCCESS")
+        ' Log GetText("CONNECTION_SUCCESS")
         Exit For
     End If
     WScript.Sleep 500
 Next
 If i > 20 Then
-    Log GetText("CONNECTION_FAIL")
+    ' Log GetText("CONNECTION_FAIL")
 End If
 
 Function GetLatestPort(logProtonVPN)
@@ -66,20 +67,20 @@ Function GetLatestPort(logProtonVPN)
             If matches.Test(line) Then
                 Set match = matches.Execute(line)
                 port = match(0).SubMatches(0)
-                Log GetText("PORT_FOUND") & port
+                ' Log GetText("PORT_FOUND") & port
                 Exit For
             End If
         Next
 
         If IsEmpty(port) Or IsNull(port) Then
             GetLatestPort = ""
-            Log GetText("PORT_NOT_FOUND")
+            ' Log GetText("PORT_NOT_FOUND")
         Else
             GetLatestPort = port
         End If
     Else
         GetLatestPort = ""
-        Log GetText("LOG_FILE_NOT_FOUND") & " " & logProtonVPN
+        ' Log GetText("LOG_FILE_NOT_FOUND") & " " & logProtonVPN
     End If
 End Function
 
@@ -95,16 +96,16 @@ Sub UpdateqBittorrentPort(port)
     http.Send postData
 
     If Err.Number <> 0 Then
-        Log GetText("API_ERROR") & " " & Err.Description
+        ' Log GetText("API_ERROR") & " " & Err.Description
         ShowNotification GetText("ERROR"), GetText("API_ERROR") & " " & Err.Description
         Err.Clear
     ElseIf http.Status <> 200 Then
-        Log GetText("HTTP_ERROR") & " " & http.Status & " - " & http.StatusText
+        ' Log GetText("HTTP_ERROR") & " " & http.Status & " - " & http.StatusText
         ShowNotification GetText("ERROR"), GetText("HTTP_ERROR") & " " & http.Status & " - " & http.StatusText
     Else
         Set objShell = CreateObject("WScript.Shell")
         objShell.Environment("USER")(envVarName) = port
-        Log GetText("PORT_UPDATED") & port
+        ' Log GetText("PORT_UPDATED") & port
         ShowNotification GetText("PORT_UPDATED_TITLE"), GetText("PORT_UPDATED_BODY") & port
     End If
     On Error GoTo 0
@@ -121,18 +122,18 @@ Function GetLastSentPort()
     On Error GoTo 0
 End Function
 
-Log GetText("START_PORT_EXTRACTION")
+' Log GetText("START_PORT_EXTRACTION")
 port = GetLatestPort(logProtonVPN)
 If port <> "" Then
     lastSentPort = GetLastSentPort()
-    Log GetText("LAST_SENT_PORT") & lastSentPort
+    ' Log GetText("LAST_SENT_PORT") & lastSentPort
     If port <> lastSentPort Then
-        Log GetText("NEW_PORT_DETECTED")
+        ' Log GetText("NEW_PORT_DETECTED")
         UpdateqBittorrentPort port
     Else
-        Log GetText("PORT_NOT_CHANGED")
+        ' Log GetText("PORT_NOT_CHANGED")
     End If
 Else
-    Log GetText("NO_PORT_FOUND")
+    ' Log GetText("NO_PORT_FOUND")
     ShowNotification GetText("ERROR"), GetText("NO_PORT_FOUND")
 End If
