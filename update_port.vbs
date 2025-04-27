@@ -9,7 +9,50 @@ qbittorrentUrl = "http://localhost:8078"
 logProtonVPN = "C:\Users\Admin\AppData\Local\Proton\Proton VPN\Logs\client-logs.txt"
 envVarName = "LAST_SENT_PORT"
 
-' Use this log for debugging purposes, uncomment the Log function calls and run the script from the command line, e.g. open cmd in the script folder and run: cscript `update_port.vbs`
+' Use this log for debugging purposes, uncomment the Log function calls and run the script from the command line, e.g. open cmd in the script folder and run: cscript `update_port.vbs`# Update Port VBScript
+
+## Overview
+This VBScript is designed to check and manage port connections for qBittorrent through Proton VPN.
+
+## Features
+- Checks qBittorrent port availability
+- Logs connection attempts
+- Supports Windows desktop notifications
+- Monitors Proton VPN log files for port information
+
+## Functions
+
+### `IsPortOpen(url)`
+Checks if a specified URL/port is accessible
+- Parameters:
+  - `url`: The URL to test connection
+- Returns: Boolean indicating port availability
+
+### `ShowNotification(title, message)`
+Displays a Windows toast notification
+- Parameters:
+  - `title`: Notification title
+  - `message`: Notification message
+- Uses PowerShell to generate notifications
+
+### `GetLatestPort(logProtonVPN)`
+Extracts the latest port information from Proton VPN logs
+- Parameters:
+  - `logProtonVPN`: Path to Proton VPN log file
+- Functionality:
+  - Reads log file
+  - Uses regex to find port pair information
+
+## Configuration
+- Default qBittorrent URL: `http://localhost:8078`
+- Default Proton VPN Log Path: `C:\Users\Admin\AppData\Local\Proton\Proton VPN\Logs\client-logs.txt`
+
+## Dependencies
+- Windows Script Host
+- PowerShell (for notifications)
+- Proton VPN
+- qBittorrent
+
 Sub Log(message)
     WScript.Echo Now & " - " & message
 End Sub

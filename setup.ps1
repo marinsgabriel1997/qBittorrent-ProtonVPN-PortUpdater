@@ -1,3 +1,22 @@
+<#
+.SYNOPSIS
+    Checks and elevates script execution to administrator privileges.
+
+.DESCRIPTION
+    Verifies if the current PowerShell script is running with administrative rights. 
+    If not, prompts the user to restart the script with elevated permissions.
+
+.PARAMETER None
+
+.EXAMPLE
+    The script will automatically prompt for elevation if run without admin rights.
+
+.NOTES
+    - Captures current user SID and username before attempting elevation
+    - Allows user to cancel elevation
+    - Uses Start-Process with RunAs verb to request admin rights
+    - Passes current user details and script paths as arguments when elevating
+#>
 if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
   
     Write-Host "This script requires administrator privileges."
