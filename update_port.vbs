@@ -1,16 +1,4 @@
-Dim fso, langFile, currentPath
-Set fso = CreateObject("Scripting.FileSystemObject")
-currentPath = fso.GetParentFolderName(WScript.ScriptFullName)
-Set langFile = fso.OpenTextFile(currentPath & "\languages.vbs", 1)
-ExecuteGlobal langFile.ReadAll
-langFile.Close
-
-qbittorrentUrl = "http://localhost:8078"
-logProtonVPN = "C:\Users\Admin\AppData\Local\Proton\Proton VPN\Logs\client-logs.txt"
-envVarName = "LAST_SENT_PORT"
-
-' Use this log for debugging purposes, uncomment the Log function calls and run the script from the command line, e.g. open cmd in the script folder and run: cscript `update_port.vbs`# Update Port VBScript
-
+' Use log for debugging purposes, set `activateLog` to False to disable logging
 ' ## Overview
 ' This VBScript is designed to check and manage port connections for qBittorrent through Proton VPN.
 
@@ -53,6 +41,25 @@ envVarName = "LAST_SENT_PORT"
 ' - Proton VPN
 ' - qBittorrent
 
+Dim fso, langFile, currentPath, activateLog
+Set fso = CreateObject("Scripting.FileSystemObject")
+currentPath = fso.GetParentFolderName(WScript.ScriptFullName)
+Set langFile = fso.OpenTextFile(currentPath & "\languages.vbs", 1)
+ExecuteGlobal langFile.ReadAll
+langFile.Close
+
+Function GetCurrentUser()
+    Dim network
+    Set network = CreateObject("WScript.Network")
+    GetCurrentUser = network.UserName
+End Function
+
+currentUser = GetCurrentUser()
+logProtonVPN = "C:\Users\" & currentUser & "\AppData\Local\Proton\Proton VPN\Logs\client-logs.txt"
+envVarName = "LAST_SENT_PORT"
+qbittorrentUrl = "http://localhost:8078"
+activateLog = False
+
 Sub Log(message)
     WScript.Echo Now & " - " & message
 End Sub
@@ -79,16 +86,16 @@ Function IsPortOpen(url)
 End Function
 
 Dim i
-' Log GetText("START_CHECK")
+If activateLog Then Log GetText("START_CHECK")
 For i = 1 To 20
     If IsPortOpen(qbittorrentUrl) Then
-        ' Log GetText("CONNECTION_SUCCESS")
+        If activateLog Then Log GetText("CONNECTION_SUCCESS")
         Exit For
     End If
     WScript.Sleep 500
 Next
 If i > 20 Then
-    ' Log GetText("CONNECTION_FAIL")
+    If activateLog Then Log GetText("CONNECTION_FAIL")
 End If
 
 Function GetLatestPort(logProtonVPN)
@@ -110,20 +117,20 @@ Function GetLatestPort(logProtonVPN)
             If matches.Test(line) Then
                 Set match = matches.Execute(line)
                 port = match(0).SubMatches(0)
-                ' Log GetText("PORT_FOUND") & port
+                If activateLog Then Log GetText("PORT_FOUND") & port
                 Exit For
             End If
         Next
 
         If IsEmpty(port) Or IsNull(port) Then
             GetLatestPort = ""
-            ' Log GetText("PORT_NOT_FOUND")
+            If activateLog Then Log GetText("PORT_NOT_FOUND")
         Else
             GetLatestPort = port
         End If
     Else
         GetLatestPort = ""
-        ' Log GetText("LOG_FILE_NOT_FOUND") & " " & logProtonVPN
+        If activateLog Then Log GetText("LOG_FILE_NOT_FOUND") & " " & logProtonVPN
     End If
 End Function
 
@@ -139,16 +146,16 @@ Sub UpdateqBittorrentPort(port)
     http.Send postData
 
     If Err.Number <> 0 Then
-        ' Log GetText("API_ERROR") & " " & Err.Description
+        If activateLog Then Log GetText("API_ERROR") & " " & Err.Description
         ShowNotification GetText("ERROR"), GetText("API_ERROR") & " " & Err.Description
         Err.Clear
     ElseIf http.Status <> 200 Then
-        ' Log GetText("HTTP_ERROR") & " " & http.Status & " - " & http.StatusText
+        If activateLog Then Log GetText("HTTP_ERROR") & " " & http.Status & " - " & http.StatusText
         ShowNotification GetText("ERROR"), GetText("HTTP_ERROR") & " " & http.Status & " - " & http.StatusText
     Else
         Set objShell = CreateObject("WScript.Shell")
         objShell.Environment("USER")(envVarName) = port
-        ' Log GetText("PORT_UPDATED") & port
+        If activateLog Then Log GetText("PORT_UPDATED") & port
         ShowNotification GetText("PORT_UPDATED_TITLE"), GetText("PORT_UPDATED_BODY") & port
     End If
     On Error GoTo 0
@@ -165,18 +172,18 @@ Function GetLastSentPort()
     On Error GoTo 0
 End Function
 
-' Log GetText("START_PORT_EXTRACTION")
+If activateLog Then Log GetText("START_PORT_EXTRACTION")
 port = GetLatestPort(logProtonVPN)
 If port <> "" Then
     lastSentPort = GetLastSentPort()
-    ' Log GetText("LAST_SENT_PORT") & lastSentPort
+    If activateLog Then Log GetText("LAST_SENT_PORT") & lastSentPort
     If port <> lastSentPort Then
-        ' Log GetText("NEW_PORT_DETECTED")
+        If activateLog Then Log GetText("NEW_PORT_DETECTED")
         UpdateqBittorrentPort port
     Else
-        ' Log GetText("PORT_NOT_CHANGED")
+        If activateLog Then Log GetText("PORT_NOT_CHANGED")
     End If
 Else
-    ' Log GetText("NO_PORT_FOUND")
+    If activateLog Then Log GetText("NO_PORT_FOUND")
     ShowNotification GetText("ERROR"), GetText("NO_PORT_FOUND")
 End If
