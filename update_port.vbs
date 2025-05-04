@@ -109,7 +109,7 @@ currentUser = GetCurrentUser()
 logProtonVPN = "C:\Users\" & currentUser & "\AppData\Local\Proton\Proton VPN\Logs\client-logs.txt"
 envVarName = "LAST_SENT_PORT"
 qbittorrentUrl = "http://localhost:" & port
-activateLog = True
+activateLog = False
 
 Function IsPortOpen(url)
      On Error Resume Next
