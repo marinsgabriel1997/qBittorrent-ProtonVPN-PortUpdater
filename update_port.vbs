@@ -54,11 +54,38 @@ Function GetCurrentUser()
     GetCurrentUser = network.UserName
 End Function
 
-currentUser = GetCurrentUser()
-logProtonVPN = "C:\Users\" & currentUser & "\AppData\Local\Proton\Proton VPN\Logs\client-logs.txt"
-envVarName = "LAST_SENT_PORT"
-qbittorrentUrl = "http://localhost:8078"
-activateLog = False
+Function GetQBittorrentPort()
+    Dim shell, exec, line, parts, port
+    
+    Set shell = CreateObject("WScript.Shell")
+    
+    ' Verificar se o qBittorrent está rodando e pegar o PID
+    Set exec = shell.Exec("cmd /c tasklist /fi ""imagename eq qbittorrent.exe"" /fo csv /nh")
+    line = exec.StdOut.ReadLine()
+    
+    If Len(line) = 0 Then Exit Function  ' qBittorrent não está rodando
+    
+    ' Extrair o PID
+    qbPID = Split(Replace(line, """", ""), ",")(1)
+    
+    ' Buscar portas de escuta deste PID
+    Set exec = shell.Exec("cmd /c netstat -ano | findstr " & qbPID & " | findstr LISTENING")
+    
+    ' Encontrar a primeira porta
+    Do Until exec.StdOut.AtEndOfStream
+        line = exec.StdOut.ReadLine()
+        parts = Split(Trim(line))
+        
+        For Each part In parts
+            If InStr(part, ":") > 0 Then
+                port = Mid(part, InStrRev(part, ":") + 1)
+                GetQBittorrentPort = port
+                Exit Function
+            End If
+        Next
+    Loop
+End Function
+
 
 Sub Log(message)
     WScript.Echo Now & " - " & message
@@ -69,6 +96,20 @@ Sub ShowNotification(title, message)
     psCommand = "powershell -Command ""New-BurntToastNotification -Text '" & title & "', '" & message & "' -Silent"""
     CreateObject("WScript.Shell").Run psCommand, 0, False
 End Sub
+
+' Uso
+port = GetQBittorrentPort()
+
+' Usa 8080 se não conseguir pegar a porta do qBittorrent
+If port = "" Then
+    port = 8080
+End If
+
+currentUser = GetCurrentUser()
+logProtonVPN = "C:\Users\" & currentUser & "\AppData\Local\Proton\Proton VPN\Logs\client-logs.txt"
+envVarName = "LAST_SENT_PORT"
+qbittorrentUrl = "http://localhost:" & port
+activateLog = True
 
 Function IsPortOpen(url)
      On Error Resume Next

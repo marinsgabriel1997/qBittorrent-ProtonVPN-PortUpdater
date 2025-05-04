@@ -26,11 +26,13 @@ The solution consists of several components:
 
 Before using this tool, ensure you have:
 
-1. **qBittorrent** installed with:
+1. **qBittorrent** installed with the following **Web UI settings** (`Tools` → `Options` → `Web UI`):
 
-    - Web UI enabled (Tools → Options → Web UI)
-    - Authentication disabled or your credentials configured in the script
-    - The correct Web UI port configured (default is 8078)
+    - Web UI enabled
+    - Any username and password configured
+    - Authentication disabled for localhost connections
+    - IP field can be left empty (the script connects to `localhost`)
+    - **The Web UI port does not need to be changed manually, but you can change it if you want; the vbs script will detect it automatically**
 
 2. **ProtonVPN** installed with:
 
