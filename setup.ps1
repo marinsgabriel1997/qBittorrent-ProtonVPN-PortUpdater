@@ -139,6 +139,8 @@ if ($sid) {
 "@
 
     Register-ScheduledTask -TaskName "Qbitorrent-ProtonVPN port Updater" -Xml $xmlContent.OuterXml -Force
+    Clear-Host
+    Write-Host "Itens copied to $destinationPath"
     Write-Host "Scheduled task created successfully."
     Pause
     exit 0
