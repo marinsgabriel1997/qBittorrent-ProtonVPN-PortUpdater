@@ -69,19 +69,74 @@ if (-not (Test-Path $destinationPath)) {
 Copy-Item -Path $updatePortVBSPath -Destination $destinationPath -Force
 Copy-Item -Path $languagesVBSPath -Destination $destinationPath -Force
 
+try {
+    if ($systemLanguage -eq 'pt-BR') {
+        auditpol /set /subcategory:"Criação de processo" /success:enable /failure:enable
+    }
+    else {
+        auditpol /set /subcategory:"Process Creation" /success:enable /failure:enable
+    }
+}
+catch {
+    Write-Host "Failed to set audit policy to monitor Qbitorrent process. Search for Audit Process Creation on Google and create it manually."
+    Write-Host "If the policy is not enabled, the port will not be automatically updated when Qbitorrent is opened, only when ProtonVPN connects."
+    Write-Host "Press any key to continue the rest of the setup"
+    Pause
+}
+
 $currentDateTime = [string](Get-Date -Format "yyyy-MM-ddTHH:mm:ss.fffffff")
 
 [xml]$xmlContent = Get-Content -Path $xmlPath -Encoding Unicode
 
-$RegistrationInfo = $xmlContent.Task.RegistrationInfo
-$NetworkSettings = $xmlContent.Task.Settings.NetworkSettings
-$UserIdNode = $xmlContent.Task.Principals.Principal
+$qbittorrentPath = $null
+
+do {
+    Clear-Host
+    Write-Host "Please enter the path to qbittorrent.exe (e.g., C:\Program Files\qBittorrent\qbittorrent.exe)"
+    $qbittorrentPath = Read-Host ">> "
+    
+    if (Test-Path $qbittorrentPath) {
+        break
+    }
+    else {
+        Write-Host "The path you entered does not exist. Please try again."
+    }
+} while ($true)
+
+# <QueryList>
+#   <Query Id="0" Path="Security">
+#     <Select Path="Security">
+#       *[System[(EventID=4688)]] and 
+#       *[EventData[Data[@Name='NewProcessName'] and (Data='D:\ServerMedia\.qbittorrent\qbittorrent.exe')]]
+#     </Select>
+#     <Select Path="Microsoft-Windows-NetworkProfile/Operational">
+#       *[System[Provider[@Name='Microsoft-Windows-NetworkProfile'] and (EventID=10000)]] and
+#       *[EventData[Data[@Name='Name'] and (Data='ProtonVPN')]]
+#     </Select>
+#   </Query>
+# </QueryList>
+
 
 if ($sid) {
-    $NetworkSettings.Id = $protonVPNGuid
-    $UserIdNode.UserId = $sid
-    $RegistrationInfo.Date = $currentDateTime
-    $RegistrationInfo.Author = $currentUser
+    Clear-Host
+    $xmlContent.Task.Settings.NetworkSettings.Id = $protonVPNGuid
+    $xmlContent.Task.Principals.Principal.UserId = $sid
+    $xmlContent.Task.RegistrationInfo.Date = $currentDateTime
+    $xmlContent.Task.RegistrationInfo.Author = $currentUser
+    $xmlContent.Task.Triggers.EventTrigger.Subscription = @"
+        <QueryList>
+            <Query Id="0" Path="Security">
+                <Select Path="Security">
+                    *[System[(EventID=4688)]] and 
+                    *[EventData[Data[@Name='NewProcessName'] and (Data='$qbittorrentPath')]]
+                </Select>
+                <Select Path="Microsoft-Windows-NetworkProfile/Operational">
+                    *[System[Provider[@Name='Microsoft-Windows-NetworkProfile'] and (EventID=10000)]] and
+                    *[EventData[Data[@Name='Name'] and (Data='ProtonVPN')]]
+                </Select>
+            </Query>
+        </QueryList>
+"@
 
     Register-ScheduledTask -TaskName "Qbitorrent-ProtonVPN port Updater" -Xml $xmlContent.OuterXml -Force
     Write-Host "Scheduled task created successfully."
