@@ -25,26 +25,24 @@ if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdenti
     $currentUser = ([Security.Principal.WindowsIdentity]::GetCurrent()).Name    
     $updatePortVBSPath = Join-Path $PSScriptRoot "update_port.vbs"
     $languagesVBSPath = Join-Path $PSScriptRoot "languages.vbs"
-
+    $xmlPath = Join-Path $PSScriptRoot "languages.vbs"
 
     $confirmation = Read-Host "Do you want to run as administrator? ([Y]/N - Y Default)"
     
-    if ($confirmation -eq '' -or $confirmation -eq 'Y' -or $confirmation -eq 'y') {
-        $scriptPath = $MyInvocation.MyCommand.Path
-        Start-Process powershell.exe -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$scriptPath`" `"$currentUserSID`" `"$currentUser`" `"$updatePortVBSPath`" `"$languagesVBSPath`"" -Verb RunAs
-        exit
-    } else {
+    if ($confirmation -ne '' -and $confirmation -ne 'Y' -and $confirmation -ne 'y') {
         Write-Host "Script execution canceled."
-        exit
+        return
     }
+    
+    Start-Process powershell.exe -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$currentUserSID`" `"$currentUser`" `"$updatePortVBSPath`" `"$languagesVBSPath`" `"$xmlPath`"" -Verb RunAs
+    exit
 }
 
-$sid = $args[0]
-$currentUser = $args[1]
-$updatePortVBSPath = $args[2]
-$languagesVBSPath = $args[3]
-$scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$xmlPath = Join-Path -Path $scriptDir -ChildPath "task_config.xml"
+$sid = if ($args.Count -gt 0) { $args[0] } else { ([Security.Principal.WindowsIdentity]::GetCurrent()).User.Value }
+$currentUser = if ($args.Count -gt 1) { $args[1] } else { ([Security.Principal.WindowsIdentity]::GetCurrent()).Name }
+$updatePortVBSPath = if ($args.Count -gt 2) { $args[2] } else { Join-Path $PSScriptRoot "update_port.vbs" }
+$languagesVBSPath = if ($args.Count -gt 3) { $args[3] } else { Join-Path $PSScriptRoot "languages.vbs" }
+$xmlPath = if ($args.Count -gt 4) { $args[4] } else { Join-Path $PSScriptRoot "task_config.xml" }
 
 $profiles = Get-ChildItem "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\NetworkList\Profiles"
 $protonVPNGuid = $null
@@ -60,7 +58,6 @@ foreach ($profile in $profiles) {
 if (-not $protonVPNGuid) {
     Write-Host "ProtonVPN profile not found in the registry."
     Pause
-    exit 1
 }
 
 $destinationPath = "C:\Program Files\QbittorrentProtonVPNUpdater"
@@ -90,7 +87,8 @@ if ($sid) {
     Write-Host "Scheduled task created successfully."
     Pause
     exit 0
-} else {
+}
+else {
     Write-Host "Failed to create scheduled task."
     Pause
     exit 1
