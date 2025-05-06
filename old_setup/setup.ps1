@@ -17,8 +17,6 @@
     - Uses Start-Process with RunAs verb to request admin rights
     - Passes current user details and script paths as arguments when elevating
 #>
-Clear-Host
-
 if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
   
     Write-Host "This script requires administrator privileges."
@@ -26,9 +24,8 @@ if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdenti
     $currentUserSID = ([Security.Principal.WindowsIdentity]::GetCurrent()).User.Value
     $currentUser = ([Security.Principal.WindowsIdentity]::GetCurrent()).Name    
     $updatePortVBSPath = Join-Path $PSScriptRoot "update_port.vbs"
-    $ProtonVPNPortMonitor = Join-Path $PSScriptRoot "ProtonVPN-PortMonitor.ps1"
-    $qBittorrentPortSync = Join-Path $PSScriptRoot "qBittorrent-PortSync.ps1"    
-    $xmlPath = Join-Path $PSScriptRoot "task_config.xml"
+    $languagesVBSPath = Join-Path $PSScriptRoot "languages.vbs"
+    $xmlPath = Join-Path $PSScriptRoot "languages.vbs"
 
     $confirmation = Read-Host "Do you want to run as administrator? ([Y]/N - Y Default)"
     
@@ -37,18 +34,15 @@ if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdenti
         return
     }
     
-    Start-Process powershell.exe -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$currentUserSID`" `"$currentUser`" `"$updatePortVBSPath`" `"$ProtonVPNPortMonitor`" `"$qBittorrentPortSync`" `"$xmlPath`"" -Verb RunAs
+    Start-Process powershell.exe -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$currentUserSID`" `"$currentUser`" `"$updatePortVBSPath`" `"$languagesVBSPath`" `"$xmlPath`"" -Verb RunAs
     exit
 }
-
-Clear-Host
 
 $sid = if ($args.Count -gt 0) { $args[0] } else { ([Security.Principal.WindowsIdentity]::GetCurrent()).User.Value }
 $currentUser = if ($args.Count -gt 1) { $args[1] } else { ([Security.Principal.WindowsIdentity]::GetCurrent()).Name }
 $updatePortVBSPath = if ($args.Count -gt 2) { $args[2] } else { Join-Path $PSScriptRoot "update_port.vbs" }
-$ProtonVPNPortMonitor = if ($args.Count -gt 3) { $args[3] } else { Join-Path $PSScriptRoot "ProtonVPN-PortMonitor.ps1" }
-$qBittorrentPortSync = if ($args.Count -gt 4) { $args[4] } else { Join-Path $PSScriptRoot "qBittorrent-PortSync.ps1" }
-$xmlPath = if ($args.Count -gt 5) { $args[5] } else { Join-Path $PSScriptRoot "task_config.xml" }
+$languagesVBSPath = if ($args.Count -gt 3) { $args[3] } else { Join-Path $PSScriptRoot "languages.vbs" }
+$xmlPath = if ($args.Count -gt 4) { $args[4] } else { Join-Path $PSScriptRoot "task_config.xml" }
 
 $profiles = Get-ChildItem "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\NetworkList\Profiles"
 $protonVPNGuid = $null
@@ -62,7 +56,7 @@ foreach ($profile in $profiles) {
 }
 
 if (-not $protonVPNGuid) {
-    Write-Host "ProtonVPN profile not found in the registry. Please start Proton VPN and connect using port forwarding."
+    Write-Host "ProtonVPN profile not found in the registry."
     Pause
 }
 
@@ -73,28 +67,21 @@ if (-not (Test-Path $destinationPath)) {
 }
 
 Copy-Item -Path $updatePortVBSPath -Destination $destinationPath -Force
-Copy-Item -Path $ProtonVPNPortMonitor -Destination $destinationPath -Force
-Copy-Item -Path $qBittorrentPortSync -Destination $destinationPath -Force
+Copy-Item -Path $languagesVBSPath -Destination $destinationPath -Force
 
-$systemLanguage = (Get-WinSystemLocale).Name
-
-
-if ($systemLanguage -eq 'pt-BR') {
-    auditpol /set /subcategory:"Criação de processo" /success:enable /failure:enable
+try {
+    if ($systemLanguage -eq 'pt-BR') {
+        auditpol /set /subcategory:"Criação de processo" /success:enable /failure:enable
+    }
+    else {
+        auditpol /set /subcategory:"Process Creation" /success:enable /failure:enable
+    }
 }
-elseif ($systemLanguage -eq 'en-US') {
-    auditpol /set /subcategory:"Process Creation" /success:enable /failure:enable
-}
-else {
-    Write-Host ""
-    Write-Host "WARNING:" -ForegroundColor Yellow
-    Write-Host "Failed to set the audit policy for monitoring the Qbittorrent process." -ForegroundColor Red
-    Write-Host "Search for 'Enable Audit Process Creation' and configure it manually via Local Security Policy or Group Policy." -ForegroundColor White
-    Write-Host "Without this policy, the port will only update automatically when ProtonVPN connects — not when Qbittorrent starts." -ForegroundColor White
-    Write-Host "" 
-    Write-Host "Press any key to continue the setup..." -ForegroundColor Cyan
-    Write-Host ""
-    $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown") 
+catch {
+    Write-Host "Failed to set audit policy to monitor Qbitorrent process. Search for Audit Process Creation on Google and create it manually."
+    Write-Host "If the policy is not enabled, the port will not be automatically updated when Qbitorrent is opened, only when ProtonVPN connects."
+    Write-Host "Press any key to continue the rest of the setup"
+    Pause
 }
 
 $currentDateTime = [string](Get-Date -Format "yyyy-MM-ddTHH:mm:ss.fffffff")
@@ -104,8 +91,7 @@ $currentDateTime = [string](Get-Date -Format "yyyy-MM-ddTHH:mm:ss.fffffff")
 $qbittorrentPath = $null
 
 do {
-    # Clear-Host
-    Write-Host "_____________________________________________________________________________________________"
+    Clear-Host
     Write-Host "Please enter the path to qbittorrent.exe (e.g., C:\Program Files\qBittorrent\qbittorrent.exe)"
     $qbittorrentPath = Read-Host ">> "
     
